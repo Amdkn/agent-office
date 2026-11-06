@@ -1,4 +1,6 @@
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
+import { EMPTY_PLAN } from '../shared/floorplan';
+import { JUKEBOX_TUNES } from '../shared/jukebox';
 import { lastFloor, store, type Profile, type Spot } from './state';
 
 type Handler = (msg: ServerMsg) => void;
@@ -13,7 +15,21 @@ function autonomousWelcomeMsg(): ServerMsg {
     t: 'welcome',
     you: 'user-s0-amadeuskone',
     peers: [],
-    floors: [{ id: 'aspace-skyline', name: 'Aspace Skyline Floor', floor: 1, path: '' }],
+    floors: [
+      {
+        id: 'aspace-skyline',
+        name: 'Aspace Skyline Floor',
+        dir: '',
+        palette: 0,
+        addedBy: 'A0-Amadeus',
+        addedAt: Date.now(),
+        workers: 0,
+        busy: 0,
+        waiting: 0,
+        people: 1,
+        wing: 0,
+      },
+    ],
     projectsDir: { dir: '', custom: false },
     ice: [],
     chat: [
@@ -36,20 +52,37 @@ function autonomousWelcomeMsg(): ServerMsg {
       pauseHiring: false,
     },
     limits: { windows: [], at: Date.now() },
-    me: { admin: true, account: { name: 'Amadou Kone (S0)', email: 'amado@aspaceos.tech' } },
+    me: { admin: true, account: { name: 'Amadou Kone (S0)', role: 'admin' } },
     notify: {},
     machine: { cpu: 12, cores: 8, memUsed: 4000000000, memTotal: 16000000000, history: [], workers: 0 },
     sky: { lat: 48.8566, lon: 2.3522, utcOffset: 60, weather: 'clear', intensity: 0 },
     theme: { pick: 'auto', active: null },
     map: { pick: 'office', custom: [] },
     prompts: { custom: {} },
-    leaveOnMerge: false,
+    leaveOnMerge: { on: false },
     floor: 'aspace-skyline',
-    project: { id: 'aspace-os-v5', name: 'Aspace OS V5 · Skyline Hub', path: '' },
+    project: {
+      name: 'Aspace OS V5 · Skyline Hub',
+      dir: '',
+      agentCmd: 'agy',
+      defaultProvider: 'claude',
+      agentProviders: ['claude', 'opencode', 'codex', 'dsh', 'pi'],
+    },
     workers: [],
     issues: { items: [], fetchedAt: Date.now(), loading: false },
     pulls: { items: [], fetchedAt: Date.now(), loading: false },
     queue: { tasks: [], maxWorkers: 4 },
+    decor: [],
+    plan: EMPTY_PLAN,
+    services: { items: [], port: 4600 },
+    dog: null,
+    jukebox: { on: false, track: JUKEBOX_TUNES[0].id, startedAt: Date.now(), elapsed: 0 },
+    cabinet: { player: null, scores: [], frame: null },
+    whiteboard: { elements: [], people: [] },
+    meeting: { current: null, past: [] },
+    ball: {},
+    cars: [],
+    jail: { prisoners: [], bones: 0 },
   };
 }
 
