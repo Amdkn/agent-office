@@ -1,0 +1,23 @@
+{
+  "$schema": "https://aspaceos.tech/schemas/cordis-fiber-v5.json",
+  "name": "@aspace-v5/agent-office",
+  "submodule_path": "01_Forkable/FKB03_3DWorlds/agent-office",
+  "sovereign_fork_url": "https://github.com/Amdkn/agent-office.git",
+  "branch": "aspace-v5-native",
+  "family": "SPATIAL_CITY_OFFICE_3D",
+  "fractal_layer": "8L",
+  "holon_owner": "A0-AMADEUS / A2-DISCOVERY",
+  "capabilities": [
+    "cubefarm_sanctuary_core",
+    "agent_office_ring_road",
+    "space_agent_reshaper"
+  ],
+  "a0_integration_target": "https://cubefarm-delta.vercel.app",
+  "egm_gateway_endpoint": "http://127.0.0.1:31415/v1/chat/completions",
+  "shared_brain_path": "00_Memoire/shared_brain/memory.jsonl",
+  "cordis_contract": {
+    "everything_is_a_plugin": true,
+    "revertible_effects": true,
+    "reactive_coeffects": true
+  }
+}
