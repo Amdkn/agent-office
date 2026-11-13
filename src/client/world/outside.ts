@@ -295,6 +295,91 @@ const NEIGHBOURS: [number, number, number, number, number, string][] = [
 /** Which way a neighbour at (x, z) is turned: its front to the office. */
 const facing = (x: number, z: number) => (Math.abs(x) > 40 ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0);
 
+/** The CubeFarm · City Office building across the street at (x=12, z=47), with ground-floor patio, glass doors and illuminated signage. */
+function buildCubeFarmBuilding(group: THREE.Group, colliders: Collider[], night: NightParts) {
+  const x = 12;
+  const z = 47;
+  const w = 16;
+  const h = 19;
+  const d = 12;
+  const frontZ = z - d / 2; // 41.0 (faces north toward Agent-Office & Scenic Loop)
+
+  const b = building(w, h, d, '#fbf3e4', night.windows);
+  b.position.set(x, G, z);
+  b.rotation.y = facing(x, z);
+  group.add(b);
+
+  const cf = new THREE.Group();
+  const coral = toon('#ff8a5b');
+  const ink = toon('#1f1d2b');
+  const patioMat = toon('#e3b98f');
+  const frameMat = toon('#e9ecef');
+  const glassMat = toon('#bfe3ff');
+  const railMat = toon('#5c677d');
+  const planterMat = toon('#e07a5f');
+  const shrubMat = toon('#52b788');
+
+  // Coral floor bands across the 6 floors of CubeFarm
+  for (let f = 1; f <= 6; f++) {
+    const fy = G + (f * h) / 6;
+    cf.add(mesh(box(w + 0.16, 0.22, d + 0.16), coral, x, fy, z, false));
+  }
+  cf.add(mesh(box(w + 0.5, 0.45, d + 0.5), ink, x, G + h + 0.22, z, false));
+
+  // Ground-floor patio slab extending from frontZ (41.0) out to z = 38.6
+  cf.add(mesh(box(w, 0.14, 2.4), patioMat, x, G + 0.07, frontZ - 1.2));
+  // Entrance walkway carpet leading from the sidewalk (z = 37.2) through the patio gate
+  cf.add(mesh(box(3.4, 0.06, 3.8), coral, x, G + 0.03, frontZ - 1.9, false));
+
+  // Patio railing along z = 38.65 with a wide 3.6m open gate in the middle (x = 10.2..13.8)
+  for (const [rx0, rx1] of [
+    [x - w / 2 + 0.2, x - 1.8],
+    [x + 1.8, x + w / 2 - 0.2],
+  ]) {
+    const rw = rx1 - rx0;
+    const rcx = (rx0 + rx1) / 2;
+    cf.add(mesh(box(rw, 0.08, 0.08), railMat, rcx, G + 1.05, frontZ - 2.32));
+    cf.add(mesh(box(rw, 0.78, 0.04), glassMat, rcx, G + 0.55, frontZ - 2.32, false));
+    colliders.push({ minX: rx0, maxX: rx1, minZ: frontZ - 2.4, maxZ: frontZ - 2.24, bottom: G, top: G + 1.15 });
+  }
+
+  // Two coral planters with shrubs flanking the patio entrance gate
+  for (const px of [x - 2.5, x + 2.5]) {
+    cf.add(mesh(box(0.9, 0.55, 0.9), planterMat, px, G + 0.34, frontZ - 1.7));
+    cf.add(mesh(new THREE.SphereGeometry(0.48, 12, 10), shrubMat, px, G + 0.85, frontZ - 1.7));
+  }
+
+  // Sliding double glass entrance doors at (x = 12, z = 40.92)
+  cf.add(mesh(box(3.2, 2.8, 0.14), ink, x, G + 1.45, frontZ - 0.05));
+  for (const dx of [-0.72, 0.72]) {
+    cf.add(mesh(box(1.32, 2.5, 0.18), glassMat, x + dx, G + 1.38, frontZ - 0.08, false));
+    cf.add(mesh(box(1.38, 2.58, 0.16), frameMat, x + dx, G + 1.38, frontZ - 0.06, false));
+  }
+
+  // Entrance canopy & warm night halo
+  cf.add(mesh(box(5.6, 0.24, 1.8), ink, x, G + 3.25, frontZ - 0.85));
+  cf.add(mesh(box(5.66, 0.08, 1.86), coral, x, G + 3.38, frontZ - 0.85, false));
+  const entranceLight = bulb(night, '#fff3d6', 0.4);
+  cf.add(mesh(box(1.8, 0.08, 0.5), entranceLight, x, G + 3.1, frontZ - 0.85, false));
+  night.halos.push({ at: new THREE.Vector3(x, G + 2.9, frontZ - 1.0), size: 3.2, color: '#ffd89a', ground: true });
+  night.lamps.push({ x, y: G + 3.0, z: frontZ - 1.2, reach: 12, color: '#ffcf8a', power: 5, ground: true });
+
+  group.add(mergeByMaterial(cf));
+
+  // High-contrast signs facing north (rotation.y = Math.PI) toward Agent-Office & the street
+  const mainSign = textPlane('✻ CUBEFARM · CITY OFFICE (6 FLOORS)', { bg: '#1f1d2b', color: '#ffd166', size: 64, border: '#ff8a5b' });
+  mainSign.scale.multiplyScalar(1.65);
+  mainSign.position.set(x, G + 4.25, frontZ - 0.9);
+  mainSign.rotation.y = Math.PI;
+  group.add(mainSign);
+
+  const doorSign = textPlane('🏢 ENTRÉE LOBBY CUBEFARM · [E] ou Avancer', { bg: '#20224a', color: '#a8dadc', size: 52, border: '#ff8a5b' });
+  doorSign.scale.multiplyScalar(1.1);
+  doorSign.position.set(x, G + 2.55, frontZ - 0.18);
+  doorSign.rotation.y = Math.PI;
+  group.add(doorSign);
+}
+
 /** The neighbours' footprints, and how tall each stands (roof cap included) above the street. */
 export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[] {
   return NEIGHBOURS.map(([x, z, w, h, d]) => {
@@ -376,6 +461,10 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
 
   // The neighbours: across the street, and further out behind and beside the office.
   for (const [x, z, w, h, d, color] of NEIGHBOURS) {
+    if (x === 12 && z === 47) {
+      buildCubeFarmBuilding(group, colliders, night);
+      continue;
+    }
     const b = building(w, h, d, color, night.windows);
     b.position.set(x, G, z);
     b.rotation.y = facing(x, z);

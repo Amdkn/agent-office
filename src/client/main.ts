@@ -207,33 +207,23 @@ void whoami().then(() => {
   if (saved && store.me.account) saved.name = store.me.account.name;
   if (store.me.account) store.profile.name = store.me.account.name;
   store.emit('me');
-  if (saved?.look) {
-    store.profile = { ...saved, look: saved.look };
-    parts.you.showMyProfile(store.profile);
-    boot();
-    // In as soon as the floor you're on is here with its dog, so the dog doesn't pop in after.
-    const welcomed = new Promise<void>((resolve) => {
-      const off = store.on('floor', () => {
-        off();
-        resolve();
-      });
+  const activeProfile = saved?.look
+    ? { ...saved, look: saved.look }
+    : { name: store.me.account?.name || 'Amadou Kone (S0)', color: '#ff8a5b', look: { skin: 2, hair: 1, style: 0 } };
+  store.profile = activeProfile;
+  parts.you.showMyProfile(store.profile);
+  boot();
+  // In as soon as the floor you're on is here with its dog, so the dog doesn't pop in after.
+  const welcomed = new Promise<void>((resolve) => {
+    const off = store.on('floor', () => {
+      off();
+      resolve();
     });
-    loading.until([
-      { say: 'Knocking on the door', done: welcomed },
-      { say: 'Fetching the dog', done: parts.dog.firstReady },
-    ]);
-  } else {
-    // Pick a character first (people from before there was a choice keep their name and color).
-    if (saved) Object.assign(store.profile, { name: saved.name, color: saved.color });
-    // Render the office behind the character select screen.
-    requestAnimationFrame(frame);
-    openCharacter(true, (p) => {
-      parts.you.showMyProfile(p);
-      parts.net.connect();
-    });
-    // No floor comes before you pick, so only the office behind the character select is waited for.
-    loading.until([]);
-  }
+  });
+  loading.until([
+    { say: 'Knocking on the door', done: welcomed },
+    { say: 'Fetching the dog', done: parts.dog.firstReady },
+  ]);
 });
 
 // Debug handle for quick checks from the console / headless screenshots.

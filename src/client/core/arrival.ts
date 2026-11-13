@@ -73,8 +73,20 @@ export function installArrival(ctx: Ctx, core: CoreState, parts: ArrivalParts) {
     const { travel, maps } = parts;
     // A few pings, to line this page's clock up with the office's for the jukebox.
     for (let i = 0; i < 5; i++) setTimeout(() => net.send({ t: 'ping', at: performance.now() }), 200 + i * 500);
+    const urlParams = new URLSearchParams(location.search);
+    const fromCubeFarm = firstWelcome && urlParams.get('spawn') === 'cubefarm-exit';
     const mine = store.peers.get(store.you);
-    if (firstWelcome && mine) {
+    if (fromCubeFarm) {
+      firstWelcome = false;
+      urlParams.delete('spawn');
+      const qs = urlParams.toString();
+      history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : ''));
+      travel.setPlace();
+      travel.syncStack();
+      placeAt({ x: 12, y: player.street, z: 37.6, rotY: Math.PI });
+      travel.arrive('back');
+      toast('🏙️ Sorti du Lobby CubeFarm · Face à Agent-Office & Scenic Loop');
+    } else if (firstWelcome && mine) {
       firstWelcome = false;
       // Where the office put you: back in the spot you left (if there's still room there), or in the elevator car.
       travel.setPlace();
@@ -127,6 +139,39 @@ export function installArrival(ctx: Ctx, core: CoreState, parts: ArrivalParts) {
     else if (msg.version !== bootVersion || restarting()) showUpgraded(msg.upgrade);
     upgradePhase = msg.upgrade.phase;
     voice.syncPeers();
+  });
+
+  // CubeFarm · City Office Lobby entrance portal across the street at (x = 12, z = 40.9)
+  let enteringCubeFarm = false;
+  let nearCubeFarmNotified = false;
+  const enterCubeFarmLobby = () => {
+    if (enteringCubeFarm) return;
+    enteringCubeFarm = true;
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    location.href = isLocal ? 'http://localhost:5317/?spawn=street' : 'https://cubefarm01.vercel.app/?spawn=street';
+  };
+  ctx.keys.add('activity', (e) => {
+    if (e.code !== 'KeyE') return false;
+    const p = player.pos;
+    if (!player.riding && p.y <= player.street + 2.2 && Math.abs(p.x - 12) < 2.6 && p.z > 38.2 && p.z < 41.5) {
+      enterCubeFarmLobby();
+      return true;
+    }
+    return false;
+  });
+  ctx.ticks.add('moved', () => {
+    if (enteringCubeFarm || player.riding) return;
+    const p = player.pos;
+    const nearPatio = p.y <= player.street + 2.2 && Math.abs(p.x - 12) < 2.6 && p.z > 38.4 && p.z < 41.5;
+    if (nearPatio && !nearCubeFarmNotified) {
+      nearCubeFarmNotified = true;
+      toast('🏢 CubeFarm · City Office Lobby — Appuyez sur [E] ou avancez vers la porte vitrée pour entrer');
+    } else if (!nearPatio && nearCubeFarmNotified) {
+      nearCubeFarmNotified = false;
+    }
+    if (p.y <= player.street + 2.2 && Math.abs(p.x - 12) < 1.9 && p.z >= 40.35 && p.z < 41.5) {
+      enterCubeFarmLobby();
+    }
   });
   ctx.messages.on('floor.enter', () => {
     const { travel } = parts;

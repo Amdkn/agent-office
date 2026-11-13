@@ -1,5 +1,6 @@
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
 import { EMPTY_PLAN } from '../shared/floorplan';
+import { CARS } from '../shared/garage';
 import { JUKEBOX_TUNES } from '../shared/jukebox';
 import { lastFloor, store, type Profile, type Spot } from './state';
 
@@ -14,7 +15,23 @@ function autonomousWelcomeMsg(): ServerMsg {
   return {
     t: 'welcome',
     you: 'user-s0-amadeuskone',
-    peers: [],
+    peers: [
+      {
+        id: 'user-s0-amadeuskone',
+        name: 'Amadou Kone (S0)',
+        color: '#ff8a5b',
+        look: { skin: 2, hair: 1, style: 0 },
+        x: 0,
+        y: -7.5,
+        z: -4,
+        rotY: 0,
+        moving: false,
+        voice: false,
+        muted: true,
+        sharing: false,
+        floor: 'aspace-skyline',
+      },
+    ],
     floors: [
       {
         id: 'aspace-skyline',
@@ -81,7 +98,7 @@ function autonomousWelcomeMsg(): ServerMsg {
     whiteboard: { elements: [], people: [] },
     meeting: { current: null, past: [] },
     ball: {},
-    cars: [],
+    cars: CARS.map((c) => ({ x: c.x, z: c.z, rotY: c.rotY, speed: 0, steer: 0 })),
     jail: { prisoners: [], bones: 0 },
   };
 }
@@ -127,33 +144,31 @@ export class Net {
     }
 
     let settled = false;
-    const fallbackTimer = setTimeout(() => {
-      if (!settled && !this.up) {
-        settled = true;
-        try {
-          if (this.ws && this.ws.readyState !== WebSocket.OPEN) this.ws.close();
-        } catch {}
-        this.up = true;
-        this.statusHandlers.forEach((h) => h(true));
-        const welcome = autonomousWelcomeMsg();
-        for (const h of this.handlers) h(welcome);
-      }
-    }, 1200);
+    const activateAutonomous = () => {
+      if (settled) return;
+      settled = true;
+      this.closedByUs = true;
+      clearTimeout(fallbackTimer);
+      try {
+        if (this.ws && this.ws.readyState !== WebSocket.OPEN) this.ws.close();
+      } catch {}
+      this.up = true;
+      this.statusHandlers.forEach((h) => h(true));
+      const welcome = autonomousWelcomeMsg();
+      for (const h of this.handlers) h(welcome);
+    };
+    const fallbackTimer = setTimeout(activateAutonomous, 600);
 
     let ws: WebSocket;
     try {
       ws = new WebSocket(`${proto}://${location.host}/ws?${q}`);
     } catch {
-      settled = true;
-      clearTimeout(fallbackTimer);
-      this.up = true;
-      this.statusHandlers.forEach((h) => h(true));
-      const welcome = autonomousWelcomeMsg();
-      for (const h of this.handlers) h(welcome);
+      activateAutonomous();
       return;
     }
 
     this.ws = ws;
+    ws.onerror = () => activateAutonomous();
     ws.onopen = () => {
       settled = true;
       clearTimeout(fallbackTimer);
@@ -195,6 +210,38 @@ export class Net {
   }
 
   send(msg: ClientMsg) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+      return;
+    }
+    // Autonomous local simulation when offline / serverless so cars are 100% drivable on Scenic Loop
+    if (msg.t === 'car.enter') {
+      const c = store.cars[msg.car];
+      if (c && !c.driver) {
+        c.driver = store.you;
+        const nextCars = store.cars.map((car) => ({ ...car }));
+        for (const h of this.handlers) h({ t: 'cars', cars: nextCars });
+      }
+    } else if (msg.t === 'car.leave') {
+      const idx = store.cars.findIndex((c) => c.driver === store.you);
+      if (idx >= 0) {
+        const c = store.cars[idx];
+        delete c.driver;
+        c.speed = 0;
+        c.steer = 0;
+        const nextCars = store.cars.map((car) => ({ ...car }));
+        for (const h of this.handlers) h({ t: 'cars', cars: nextCars });
+      }
+    } else if (msg.t === 'car.drive') {
+      const idx = store.cars.findIndex((c) => c.driver === store.you);
+      if (idx >= 0) {
+        const c = store.cars[idx];
+        c.x = msg.x;
+        c.z = msg.z;
+        c.rotY = msg.rotY;
+        c.speed = msg.speed;
+        c.steer = msg.steer;
+      }
+    }
   }
 }
